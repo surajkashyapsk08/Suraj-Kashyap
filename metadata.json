@@ -1,0 +1,6 @@
+{
+  "name": "Suraj Sir Academy",
+  "description": "High-fidelity, interactive educational app for Suraj Sir Academy with Chapter Lists, beautiful PDF-style Study Notes, interactive Quizzes, and a Student Profile page.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
