@@ -14,11 +14,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -165,6 +168,11 @@ fun ChapterItemCard(
   colors: SubjectThemeColors,
   onClick: () -> Unit
 ) {
+  val context = LocalContext.current
+  val isDownloaded by remember(chapter.id) {
+    mutableStateOf(com.example.data.OfflineStorageManager.isChapterDownloaded(context, chapter.id))
+  }
+
   Card(
     modifier = Modifier
       .fillMaxWidth()
@@ -201,14 +209,29 @@ fun ChapterItemCard(
 
       // Chapter Details
       Column(modifier = Modifier.weight(1f)) {
-        Text(
-          text = chapter.title,
-          fontSize = 15.sp,
-          fontWeight = FontWeight.Bold,
-          color = MaterialTheme.colorScheme.onSurface,
-          maxLines = 1,
-          overflow = TextOverflow.Ellipsis
-        )
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.SpaceBetween,
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          Text(
+            text = chapter.title,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
+          )
+          if (isDownloaded) {
+            Icon(
+              imageVector = Icons.Default.CloudDone,
+              contentDescription = "Available Offline",
+              tint = colors.accent,
+              modifier = Modifier.size(16.dp).padding(start = 4.dp)
+            )
+          }
+        }
         Spacer(modifier = Modifier.height(4.dp))
         Text(
           text = chapter.description,

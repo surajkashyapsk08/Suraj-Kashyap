@@ -41,8 +41,14 @@ fun ChapterDetailScreen(
 ) {
   val subjects by EducationRepository.subjects.collectAsState()
   val subject = subjects.find { it.id == subjectId }
-  val chapter = subject?.chapters?.find { it.id == chapterId }
   val context = LocalContext.current
+
+  // Attempt to load from offline storage first to provide offline access mechanism, 
+  // fallback to live repository if not downloaded.
+  val chapter = remember(chapterId, subject) {
+    com.example.data.OfflineStorageManager.getDownloadedChapter(context, chapterId)
+      ?: subject?.chapters?.find { it.id == chapterId }
+  }
 
   if (subject == null || chapter == null) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -89,23 +95,28 @@ fun ChapterDetailScreen(
           }
         },
         actions = {
-          if (selectedTab == 0) {
-            IconButton(
-              onClick = {
-                Toast.makeText(
-                  context,
-                  "Downloading '${chapter.title}' PDF Notes offline...",
-                  Toast.LENGTH_SHORT
-                ).show()
-              },
-              modifier = Modifier.testTag("download_pdf_button")
-            ) {
-              Icon(
-                imageVector = Icons.Default.FileDownload,
-                contentDescription = "Download Notes PDF",
-                tint = accentColor
-              )
-            }
+          var isDownloaded by remember(chapter.id) {
+            mutableStateOf(com.example.data.OfflineStorageManager.isChapterDownloaded(context, chapter.id))
+          }
+          IconButton(
+            onClick = {
+              if (isDownloaded) {
+                com.example.data.OfflineStorageManager.removeChapter(context, chapter.id)
+                isDownloaded = false
+                Toast.makeText(context, "Removed offline materials for '${chapter.title}'", Toast.LENGTH_SHORT).show()
+              } else {
+                com.example.data.OfflineStorageManager.downloadChapter(context, chapter)
+                isDownloaded = true
+                Toast.makeText(context, "Downloaded '${chapter.title}' for offline access", Toast.LENGTH_SHORT).show()
+              }
+            },
+            modifier = Modifier.testTag("download_pdf_button")
+          ) {
+            Icon(
+              imageVector = if (isDownloaded) Icons.Default.CloudDone else Icons.Default.CloudDownload,
+              contentDescription = if (isDownloaded) "Remove Offline Access" else "Download Offline",
+              tint = accentColor
+            )
           }
         },
         colors = TopAppBarDefaults.topAppBarColors(
