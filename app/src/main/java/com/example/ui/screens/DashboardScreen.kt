@@ -30,16 +30,18 @@ import androidx.compose.ui.unit.sp
 import com.example.R
 import com.example.data.EducationRepository
 import com.example.data.Subject
+import com.example.data.auth.AuthViewModel
 import com.example.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
+  authViewModel: AuthViewModel,
   onSubjectSelect: (String) -> Unit,
   onNavigateToProfile: () -> Unit
 ) {
   val subjects by EducationRepository.subjects.collectAsState()
-  val profile by EducationRepository.studentProfile.collectAsState()
+  val profile by authViewModel.studentProfile.collectAsState()
   var searchQuery by remember { mutableStateOf("") }
 
   val filteredSubjects = remember(searchQuery, subjects) {
@@ -77,7 +79,7 @@ fun DashboardScreen(
               letterSpacing = 0.5.sp
             )
             Text(
-              text = "Suraj Sir Academy",
+              text = profile?.fullName ?: "Student",
               fontSize = 24.sp,
               fontWeight = FontWeight.Bold,
               color = MaterialTheme.colorScheme.onBackground,
@@ -209,7 +211,7 @@ fun DashboardScreen(
               }
             }
             Text(
-              text = "${profile.streakDays} Days",
+              text = "${profile?.streakDays ?: 0} Days",
               fontSize = 14.sp,
               fontWeight = FontWeight.Bold,
               color = MaterialTheme.colorScheme.primary

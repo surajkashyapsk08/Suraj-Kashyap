@@ -31,21 +31,24 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.R
 import com.example.data.EducationRepository
+import com.example.data.auth.AuthViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
+  authViewModel: AuthViewModel,
   onNavigateBack: () -> Unit,
   onLogout: () -> Unit
 ) {
-  val profile by EducationRepository.studentProfile.collectAsState()
+  val profile by authViewModel.studentProfile.collectAsState()
+  val demoProfile by EducationRepository.studentProfile.collectAsState()
   val subjects by EducationRepository.subjects.collectAsState()
   val context = LocalContext.current
 
   val completedCount = subjects.flatMap { it.chapters }.count { it.isCompleted }
 
   var isEditingName by remember { mutableStateOf(false) }
-  var editedName by remember { mutableStateOf(profile.name) }
+  var editedName by remember { mutableStateOf(profile?.fullName ?: "") }
 
   var notificationsEnabled by remember { mutableStateOf(true) }
   var offlineModeEnabled by remember { mutableStateOf(false) }
@@ -165,7 +168,7 @@ fun ProfileScreen(
                 modifier = Modifier.clickable { isEditingName = true }
               ) {
                 Text(
-                  text = profile.name,
+                  text = profile?.fullName ?: "Student",
                   fontSize = 22.sp,
                   fontWeight = FontWeight.Bold,
                   color = MaterialTheme.colorScheme.onSurface,
@@ -184,7 +187,7 @@ fun ProfileScreen(
             Spacer(modifier = Modifier.height(4.dp))
 
             Text(
-              text = profile.gradeClass,
+              text = profile?.studentClass ?: "Class 10",
               fontSize = 14.sp,
               fontWeight = FontWeight.Medium,
               color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -193,7 +196,7 @@ fun ProfileScreen(
             Spacer(modifier = Modifier.height(2.dp))
 
             Text(
-              text = "Roll: ${profile.rollNo} • Class 10",
+              text = "Roll: ${profile?.uid?.take(4) ?: "N/A"} • ${profile?.studentClass ?: "Class 10"}",
               fontSize = 12.sp,
               color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
             )
@@ -210,14 +213,14 @@ fun ProfileScreen(
           StatCard(
             modifier = Modifier.weight(1f),
             title = "Streak Days",
-            value = "${profile.streakDays} Days",
+            value = "${profile?.streakDays ?: 0} Days",
             icon = Icons.Default.LocalFireDepartment,
             iconColor = Color(0xFFE64A19)
           )
           StatCard(
             modifier = Modifier.weight(1f),
             title = "Study Time",
-            value = "${profile.totalStudyMinutes} Mins",
+            value = "${profile?.studyMinutes ?: 0} Mins",
             icon = Icons.Default.Timer,
             iconColor = Color(0xFF1976D2)
           )
@@ -234,7 +237,7 @@ fun ProfileScreen(
       // Achievement Badges Earned Section
       item {
         Text(
-          text = "Unlocked Academy Badges (${profile.badges.size})",
+          text = "Unlocked Academy Badges (${demoProfile.badges.size})",
           fontSize = 16.sp,
           fontWeight = FontWeight.Bold,
           color = MaterialTheme.colorScheme.onBackground
@@ -245,7 +248,7 @@ fun ProfileScreen(
         Column(
           verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-          for (badge in profile.badges) {
+          for (badge in demoProfile.badges) {
             Card(
               modifier = Modifier
                 .fillMaxWidth()

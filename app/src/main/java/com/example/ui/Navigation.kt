@@ -1,16 +1,19 @@
 package com.example.ui
 
 import androidx.compose.runtime.Composable
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.data.auth.AuthViewModel
 import com.example.ui.screens.*
 
 @Composable
 fun AppNavigation() {
   val navController = rememberNavController()
+  val authViewModel: AuthViewModel = viewModel()
 
   NavHost(
     navController = navController,
@@ -19,6 +22,12 @@ fun AppNavigation() {
     // 1. Splash Screen
     composable("splash") {
       SplashScreen(
+        authViewModel = authViewModel,
+        onNavigateToDashboard = {
+          navController.navigate("dashboard") {
+            popUpTo("splash") { inclusive = true }
+          }
+        },
         onNavigateToLogin = {
           navController.navigate("login") {
             popUpTo("splash") { inclusive = true }
@@ -30,10 +39,29 @@ fun AppNavigation() {
     // 2. Login Screen
     composable("login") {
       LoginScreen(
+        authViewModel = authViewModel,
         onLoginSuccess = {
           navController.navigate("dashboard") {
             popUpTo("login") { inclusive = true }
           }
+        },
+        onNavigateToSignUp = {
+          navController.navigate("signup")
+        }
+      )
+    }
+    
+    // 2b. Sign Up Screen
+    composable("signup") {
+      SignUpScreen(
+        authViewModel = authViewModel,
+        onSignUpSuccess = {
+          navController.navigate("dashboard") {
+            popUpTo("login") { inclusive = true }
+          }
+        },
+        onNavigateToLogin = {
+          navController.popBackStack()
         }
       )
     }
@@ -41,6 +69,7 @@ fun AppNavigation() {
     // 3. Home Dashboard Screen
     composable("dashboard") {
       DashboardScreen(
+        authViewModel = authViewModel,
         onSubjectSelect = { subjectId ->
           navController.navigate("chapters/$subjectId")
         },
@@ -85,8 +114,10 @@ fun AppNavigation() {
     // 6. Student Profile Screen
     composable("profile") {
       ProfileScreen(
+        authViewModel = authViewModel,
         onNavigateBack = { navController.popBackStack() },
         onLogout = {
+          authViewModel.logout()
           navController.navigate("login") {
             popUpTo("dashboard") { inclusive = true }
           }
