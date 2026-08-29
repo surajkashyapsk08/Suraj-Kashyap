@@ -5,11 +5,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withTimeout
 
 class AuthViewModel : ViewModel() {
     private val auth: FirebaseAuth? = try { FirebaseAuth.getInstance() } catch (e: Exception) { null }
@@ -55,7 +57,12 @@ class AuthViewModel : ViewModel() {
                     _authState.value = AuthState.Error("Login failed. User not found.")
                 }
             } catch (e: Exception) {
-                _authState.value = AuthState.Error(e.message ?: "Login failed.")
+                val msg = e.message ?: "Login failed."
+                if (msg.contains("credential is incorrect") || msg.contains("expired") || msg.contains("INVALID_LOGIN_CREDENTIALS")) {
+                    _authState.value = AuthState.Error("Invalid email or password.")
+                } else {
+                    _authState.value = AuthState.Error(msg)
+                }
             }
         }
     }
@@ -68,6 +75,7 @@ class AuthViewModel : ViewModel() {
         _authState.value = AuthState.Loading
         viewModelScope.launch {
             try {
+                // 1. Create User in Firebase Auth
                 val result = auth.createUserWithEmailAndPassword(email, password).await()
                 result.user?.let { user ->
                     val profile = StudentProfile(
@@ -77,8 +85,17 @@ class AuthViewModel : ViewModel() {
                         studentClass = studentClass
                     )
                     
-                    // Save to Firestore
-                    firestore.collection("users").document(user.uid).set(profile).await()
+                    // 2. Save to Firestore with Timeout
+                    try {
+                        withTimeout(5000) {
+                            firestore.collection("users").document(user.uid).set(profile).await()
+                        }
+                    } catch (e: TimeoutCancellationException) {
+                        Log.e("AuthViewModel", "Firestore write timed out (Database might not be created in console)", e)
+                        // Continue to login even if Firestore fails to avoid hanging the UI
+                    } catch (e: Exception) {
+                        Log.e("AuthViewModel", "Firestore write failed", e)
+                    }
                     
                     _studentProfile.value = profile
                     _authState.value = AuthState.Authenticated
@@ -103,15 +120,24 @@ class AuthViewModel : ViewModel() {
             return
         }
         try {
-            val document = firestore.collection("users").document(uid).get().await()
+            val document = withTimeout(5000) {
+                firestore.collection("users").document(uid).get().await()
+            }
             val profile = document.toObject(StudentProfile::class.java)
             if (profile != null) {
                 _studentProfile.value = profile
                 _authState.value = AuthState.Authenticated
             } else {
-                _authState.value = AuthState.Error("User profile not found in database.")
-                auth?.signOut()
+                // If profile not found in DB (e.g. timeout on signup), we still authenticate them so they aren't stuck
+                val fallbackProfile = StudentProfile(uid = uid, fullName = "Student", email = auth?.currentUser?.email ?: "", studentClass = "")
+                _studentProfile.value = fallbackProfile
+                _authState.value = AuthState.Authenticated
             }
+        } catch (e: TimeoutCancellationException) {
+            Log.e("AuthViewModel", "Firestore read timed out", e)
+            val fallbackProfile = StudentProfile(uid = uid, fullName = "Student", email = auth?.currentUser?.email ?: "", studentClass = "")
+            _studentProfile.value = fallbackProfile
+            _authState.value = AuthState.Authenticated
         } catch (e: Exception) {
             Log.e("AuthViewModel", "Error fetching profile", e)
             _authState.value = AuthState.Error("Error fetching profile.")
