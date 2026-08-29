@@ -203,6 +203,25 @@ fun ChapterDetailScreen(
 fun StudyNotesTab(chapter: StudyChapter, accentColor: Color) {
   var notesHighlighted by remember { mutableStateOf(false) }
 
+  // Timer State
+  var isTimerRunning by remember { mutableStateOf(false) }
+  var studySeconds by remember { mutableStateOf(0) }
+
+  LaunchedEffect(isTimerRunning) {
+    if (isTimerRunning) {
+      while (true) {
+        kotlinx.coroutines.delay(1000L)
+        studySeconds++
+      }
+    }
+  }
+
+  val formattedTime = remember(studySeconds) {
+    val minutes = studySeconds / 60
+    val seconds = studySeconds % 60
+    "${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}"
+  }
+
   LazyColumn(
     modifier = Modifier
       .fillMaxSize()
@@ -234,6 +253,92 @@ fun StudyNotesTab(chapter: StudyChapter, accentColor: Color) {
             fontSize = 11.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant
           )
+        }
+      }
+    }
+
+    // Interactive Study Timer
+    item {
+      Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+          containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+      ) {
+        Row(
+          modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+          Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+          ) {
+            Box(
+              modifier = Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(if (isTimerRunning) accentColor.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant),
+              contentAlignment = Alignment.Center
+            ) {
+              Icon(
+                imageVector = Icons.Default.Timer,
+                contentDescription = "Timer",
+                tint = if (isTimerRunning) accentColor else MaterialTheme.colorScheme.onSurfaceVariant
+              )
+            }
+            Column {
+              Text(
+                text = "Focus Session",
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+              )
+              Text(
+                text = formattedTime,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (isTimerRunning) accentColor else MaterialTheme.colorScheme.onSurface
+              )
+            }
+          }
+          
+          Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+          ) {
+            FilledIconButton(
+              onClick = { isTimerRunning = !isTimerRunning },
+              colors = IconButtonDefaults.filledIconButtonColors(
+                containerColor = if (isTimerRunning) MaterialTheme.colorScheme.surfaceVariant else accentColor,
+                contentColor = if (isTimerRunning) MaterialTheme.colorScheme.onSurfaceVariant else Color.White
+              ),
+              modifier = Modifier.testTag("timer_toggle_button")
+            ) {
+              Icon(
+                imageVector = if (isTimerRunning) Icons.Default.Pause else Icons.Default.PlayArrow,
+                contentDescription = if (isTimerRunning) "Pause Timer" else "Start Timer"
+              )
+            }
+            
+            if (studySeconds > 0) {
+              IconButton(
+                onClick = { 
+                  isTimerRunning = false
+                  studySeconds = 0 
+                },
+                modifier = Modifier.testTag("timer_reset_button")
+              ) {
+                Icon(
+                  imageVector = Icons.Default.Stop,
+                  contentDescription = "Reset Timer",
+                  tint = MaterialTheme.colorScheme.error
+                )
+              }
+            }
+          }
         }
       }
     }
